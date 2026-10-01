@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShiftSense — Rotas that see the busy night coming</title>
+<meta name="description" content="AI-assisted staff scheduling for independent restaurants, bars and pubs. ShiftSense suggests how many staff each shift needs from the weather, local events and your own history, shows its reasoning, and you approve every rota.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<style>
+/* ShiftSense brand: teal #2A9D8F, amber #F2A541, navy #1F3A5F, system sans (from the logo).
+   The logo teal is too light for text on white (3.3:1), so text and buttons use a darker teal. */
+:root {
+  --bg: #ffffff;
+  --surface: #f5f8fa;
+  --fg: #1f3a5f;
+  --muted: #4a5b70;
+  --line: #dde5ec;
+  --accent: #1e7268;
+  --accent-fg: #ffffff;
+  --brand-teal: #2a9d8f;
+  --brand-amber: #f2a541;
+  --brand-navy: #1f3a5f;
+  --display: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1b2b; --surface: #16263a; --fg: #e6edf4; --muted: #a9b8c8; --line: #263a52;
+    --accent: #4cc2b3; --accent-fg: #0f1b2b; --brand-navy: #8fb3dc;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1b2b; --surface: #16263a; --fg: #e6edf4; --muted: #a9b8c8; --line: #263a52;
+  --accent: #4cc2b3; --accent-fg: #0f1b2b; --brand-navy: #8fb3dc;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.6;
+  padding-inline: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1080px; margin-inline: auto; }
+h1, h2, h3 { font-family: var(--display); font-weight: 650; line-height: 1.1; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+p, ul { margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+/* header */
+.site-header { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--line); margin-inline: -16px; padding-inline: 16px; }
+.site-header .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; padding-block: 14px; }
+.wordmark { font-family: var(--display); font-weight: 500; font-size: 24px; color: var(--fg); letter-spacing: -0.02em; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+.wordmark svg { width: 30px; height: 30px; display: block; }
+.nav { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 15px; }
+.nav a { text-decoration: none; color: var(--muted); padding-block: 4px; }
+.nav a:hover { color: var(--fg); }
+
+/* buttons */
+.btn { display: inline-block; text-decoration: none; font-weight: 600; font-size: 16px; padding: 13px 22px; border-radius: 999px; border: 1.5px solid var(--fg); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost:hover { background: var(--surface); }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; padding-block: 72px 80px; }
+.eyebrow { font-size: 14px; font-weight: 600; color: var(--accent); }
+.hero h1 { font-size: clamp(38px, 6vw, 62px); margin-top: 12px; }
+.hero .lead { margin-top: 22px; font-size: 19px; color: var(--muted); max-width: 32em; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+
+/* suggestion card mock */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 48px -28px rgba(31, 58, 95, 0.35); overflow: hidden; }
+.card-head { display: flex; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.card-head strong { color: var(--fg); }
+.card-body { padding: 18px; display: grid; gap: 16px; }
+.suggest { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.suggest .num { font-family: var(--display); font-size: 44px; font-weight: 700; line-height: 1; color: var(--accent); }
+.suggest .what { font-weight: 600; }
+.suggest .usual { color: var(--muted); font-size: 14px; }
+.why { display: grid; gap: 8px; padding: 0; list-style: none; font-size: 15px; }
+.why li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; }
+.why .ic { color: var(--brand-amber); font-weight: 700; }
+.card-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 999px; border: 1.5px solid var(--line); }
+.chip.ok { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.card-note { padding: 10px 18px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+
+/* sections */
+section { padding-block: 72px; border-top: 1px solid var(--line); scroll-margin-top: 70px; }
+.sec-head { display: grid; gap: 12px; margin-bottom: 40px; max-width: 40em; }
+.sec-head h2 { font-size: clamp(30px, 4.4vw, 42px); }
+.sec-head p { color: var(--muted); }
+
+.signals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.signal { background: var(--surface); border: 1px solid var(--line); border-top: 6px solid var(--brand-teal); border-radius: 14px; padding: 22px; display: grid; gap: 8px; align-content: start; }
+.signal h3 { font-size: 20px; }
+.signal p { color: var(--muted); font-size: 15.5px; }
+.callout { margin-top: 28px; padding: 20px 22px; border-left: 4px solid var(--accent); background: var(--surface); border-radius: 0 12px 12px 0; max-width: 46em; }
+
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 40px; }
+.feature { display: grid; gap: 8px; align-content: start; border-top: 6px solid var(--brand-amber); padding-top: 16px; }
+.feature h3 { font-size: 21px; }
+.feature p { color: var(--muted); font-size: 15.5px; }
+
+.staff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+.ticks { list-style: none; padding: 0; display: grid; gap: 10px; }
+.ticks li { padding-left: 28px; position: relative; }
+.ticks li::before { content: ""; position: absolute; left: 0; top: 0.45em; width: 14px; height: 8px; border-left: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent); transform: rotate(-45deg); }
+.fineprint { margin-top: 18px; font-size: 15px; color: var(--muted); }
+
+.pilot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.pilot-box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: grid; gap: 12px; align-content: start; }
+.pilot-box h3 { font-size: 22px; }
+.pilot-cta { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
+.pilot-cta p { color: var(--muted); font-size: 15px; max-width: 40em; }
+
+footer { border-top: 1px solid var(--line); padding-block: 28px 40px; display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 900px) {
+  .hero, .staff, .pilot { grid-template-columns: minmax(0, 1fr); }
+  .hero { padding-block: 44px 56px; gap: 36px; }
+  .signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .features { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  section { padding-block: 52px; }
+}
+@media (max-width: 520px) {
+  .signals { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="wordmark" href="#top">
+      <svg viewBox="44 44 132 136" aria-hidden="true"><rect x="50" y="50" width="120" height="28" rx="6" fill="#2A9D8F"/><rect x="50" y="50" width="28" height="76" rx="6" fill="#2A9D8F"/><rect x="50" y="98" width="120" height="28" rx="6" fill="#F2A541"/><rect x="142" y="98" width="28" height="76" rx="6" style="fill:var(--brand-navy)"/><rect x="50" y="146" width="120" height="28" rx="6" style="fill:var(--brand-navy)"/></svg>
+      <span>ShiftSense</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#staff">For staff</a>
+      <a href="#pilot">Pilot</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Staff scheduling for independent hospitality</p>
+      <h1>Rotas that see the busy night coming.</h1>
+      <p class="lead">Most rota tools put the schedule online. ShiftSense helps you predict it. It suggests how many staff each shift needs from the weather, local events and your own history, and shows you why. You approve every rota.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="mailto:info@shiftsense.work?subject=ShiftSense%20pilot">Join the pilot</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+    </div>
+
+    <div class="card" role="img" aria-label="Example of a ShiftSense staffing suggestion with its reasons">
+      <div class="card-head"><span><strong>Saturday</strong> · Dinner</span><span>Suggestion</span></div>
+      <div class="card-body">
+        <div class="suggest">
+          <span class="num">6</span>
+          <span class="what">front of house</span>
+          <span class="usual">usually 4</span>
+        </div>
+        <ul class="why">
+          <li><span class="ic">☀</span><span>22°C and sunny: terrace likely open</span></li>
+          <li><span class="ic">♪</span><span>Concert nearby, finishing at 10pm</span></li>
+          <li><span class="ic">↺</span><span>Similar Saturdays were busier than average</span></li>
+        </ul>
+        <div class="card-actions">
+          <span class="chip ok">Approve</span>
+          <span class="chip">Edit</span>
+          <span class="chip">Reject</span>
+        </div>
+      </div>
+      <p class="card-note">Illustrative example, not a real venue.</p>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="sec-head">
+      <h2>What goes into a suggestion</h2>
+      <p>ShiftSense looks at the things that make a shift busy or quiet, and tells you which ones it used.</p>
+    </div>
+    <div class="signals">
+      <div class="signal">
+        <h3>Weather</h3>
+        <p>The forecast for each shift, including whether outdoor seating is likely to be in use.</p>
+      </div>
+      <div class="signal">
+        <h3>Local events</h3>
+        <p>Concerts, matches and shows nearby. A weekly search finds more, and you confirm which ones matter.</p>
+      </div>
+      <div class="signal">
+        <h3>Your history</h3>
+        <p>How busy the same day of the week has been before, from your past shifts or an imported history.</p>
+      </div>
+      <div class="signal">
+        <h3>Bookings</h3>
+        <p>Reservations and expected covers you already know about.</p>
+      </div>
+    </div>
+    <p class="callout"><strong>You stay in charge.</strong> Every suggestion shows its reasoning, and nothing changes on the rota until a manager approves it. When there isn't much history to go on yet, ShiftSense says so.</p>
+  </section>
+
+  <section id="features">
+    <div class="sec-head">
+      <h2>Everything else a rota needs</h2>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <h3>Week grid</h3>
+        <p>Build the week by drag and drop, with suggestions alongside.</p>
+      </div>
+      <div class="feature">
+        <h3>Rest and hours checks</h3>
+        <p>Checks daily and weekly rest and hours limits as you build the rota.</p>
+      </div>
+      <div class="feature">
+        <h3>Swaps you approve</h3>
+        <p>Staff offer shifts to each other or to the team; you approve the swap.</p>
+      </div>
+      <div class="feature">
+        <h3>Timesheets</h3>
+        <p>Clock-in and clock-out times, exported to CSV for payroll.</p>
+      </div>
+      <div class="feature">
+        <h3>Leave and holiday</h3>
+        <p>Requests, approvals and holiday allowances in one place.</p>
+      </div>
+      <div class="feature">
+        <h3>Fair shift picks</h3>
+        <p>Candidates for a shift appear without names first, and picking someone by name records why.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="staff">
+    <div class="staff">
+      <div class="sec-head" style="margin-bottom:0">
+        <h2>An app your staff will actually open</h2>
+        <p>Staff see their shifts and sort out the day-to-day themselves, so fewer messages land on the manager.</p>
+      </div>
+      <div>
+        <ul class="ticks">
+          <li>See upcoming shifts, and clock in and out</li>
+          <li>Set regular availability, plus one-off exceptions</li>
+          <li>Offer a shift to a colleague, or pick up an open one</li>
+          <li>Request leave or report sick</li>
+          <li>Team and direct messages</li>
+        </ul>
+        <p class="fineprint">The staff app is on Android. An iPhone app isn't available yet.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pilot">
+    <div class="sec-head">
+      <h2>Become a pilot venue</h2>
+      <p>We're looking for independent restaurants, bars and pubs in Northern Ireland to run ShiftSense on their real rotas before launch.</p>
+    </div>
+    <div class="pilot">
+      <div class="pilot-box">
+        <h3>What you get</h3>
+        <ul class="ticks">
+          <li>Free for the first 3 months</li>
+          <li>Then 50% off for the next 6 months</li>
+          <li>Setup done alongside you, including importing past shifts</li>
+          <li>A real say in what gets built next</li>
+        </ul>
+      </div>
+      <div class="pilot-box">
+        <h3>What we ask</h3>
+        <ul class="ticks">
+          <li>Use ShiftSense for your real weekly rota</li>
+          <li>Tell us when a suggestion was right, and when it wasn't</li>
+          <li>A short check-in every few weeks</li>
+        </ul>
+      </div>
+    </div>
+    <div class="pilot-cta">
+      <a class="btn primary" href="mailto:info@shiftsense.work?subject=ShiftSense%20pilot">Apply to be a pilot venue</a>
+      <p>Tell us your venue, roughly how many staff you have, and how you do your rota today.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>ShiftSense is operated by Skeillebank Ltd, registered in Northern Ireland, company no. NI744153. Registered office: 8 Manse Road, Drumquin, BT78 4SD.</span>
+    <span>© 2026 Skeillebank Ltd · <a href="mailto:info@shiftsense.work">info@shiftsense.work</a> · <a href="https://shiftsense-web-pilot.azurewebsites.net/docs/privacy-policy">Privacy</a> · <a href="https://shiftsense-web-pilot.azurewebsites.net/docs/terms-of-use">Terms</a></span>
+  </footer>
+</main>
+
+</body>
+</html>
